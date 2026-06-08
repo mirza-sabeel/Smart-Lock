@@ -1,1 +1,65 @@
+Hardware code : 
 
+#include <ESP8266WiFi.h>
+#include "Adafruit_MQTT.h"
+#include "Adafruit_MQTT_Client.h"
+WiFiClient client;
+WiFiClient wificlient;
+
+void MQTT_connect();
+Adafruit_MQTT_Client mqtt(&client, "broker.emqx.io", 1883, "", "");
+Adafruit_MQTT_Publish tx = Adafruit_MQTT_Publish(&mqtt, "tx");
+Adafruit_MQTT_Subscribe rx = Adafruit_MQTT_Subscribe(&mqtt,"loadserver/relayctrl");
+void MQTT_connect() {
+  int8_t ret;
+  if (mqtt.connected()) {
+  return;
+  }
+  Serial.print("Connecting to MQTT... ");
+  uint8_t retries = 3;
+while ((ret = mqtt.connect()) != 0) {
+  Serial.println(mqtt.connectErrorString(ret));
+  Serial.println("Retrying MQTT connection in 5 seconds...");
+  mqtt.disconnect();
+  delay(5000);
+  retries--;
+if (retries == 0) {
+ while (1);
+  }
+}
+  Serial.println("MQTT Connected!");
+}
+
+String item;
+
+void setup(){
+  Serial.begin(9600);
+  item = "";
+  Serial.begin(9600);
+  pinMode(5, OUTPUT);
+  pinMode(4, OUTPUT);
+  mqtt.subscribe(&rx);
+}
+
+void loop(){
+  WiFi.begin("doorlock","password");
+  MQTT_connect();
+  tx.publish(analogRead(A0));
+    Adafruit_MQTT_Subscribe *subscription;
+  while ((subscription = mqtt.readSubscription(5000))) {
+  if (subscription ==&rx) {
+    item = (char *)rx.lastread;
+    Serial.println(item);
+    if (item == "1") {
+      Serial.println("on");
+      digitalWrite(5,HIGH); 
+     
+    } else if (item == "0") {
+      Serial.println("off");
+      digitalWrite(5,LOW);
+    }
+
+  }
+  }
+
+}
